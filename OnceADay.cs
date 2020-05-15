@@ -1,18 +1,32 @@
 using System;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Dilbert.Function
 {
 	public static class OnceADay
 	{
-		private static TraceWriter _log;
+		private static ILogger _log;
 
 		[FunctionName("OnceADay")]
-		public static void Run([TimerTrigger("%ScheduleAppSetting%")]TimerInfo myTimer, TraceWriter log)
+		public static void RunTimer([TimerTrigger("%DailySchedule%")] TimerInfo myTimer, ILogger log)
 		{
 			_log = log;
-			log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
+			PostDilbert();
+		}
+
+		// [FunctionName("HttpTrigger")]
+		// public static void RunHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req, ILogger log)
+		// {
+		// 	_log = log;
+		// 	PostDilbert();
+		// }
+
+		private static void PostDilbert()
+		{
+			_log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
 			string urlWithAccessToken = GetEnvironmentVariable("WebhookUrl");
 			string icon = GetIcon();
@@ -25,7 +39,7 @@ namespace Dilbert.Function
 			{
 				Icon = icon,
 				Channel = channel,
-				Text = $"http://dilbert.com/strip/{DateTime.Now.ToString("yyyy-MM-dd")}",
+				Text = $"https://dilbert.com/strip/{DateTime.Now.ToString("yyyy-MM-dd")}",
 				Username = username
 			};
 
@@ -35,7 +49,7 @@ namespace Dilbert.Function
 		private static string GetEnvironmentVariable(string name)
 		{
 			string variable = System.Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Process);
-			_log.Info($"{name}: {variable}");
+			_log.LogInformation($"{name}: {variable}");
 			return variable;
 		}
 
